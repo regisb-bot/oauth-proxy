@@ -2,14 +2,39 @@ export const config = {
   runtime: 'nodejs',
 };
 
+async function getAccessToken() {
+  const response = await fetch(`${process.env.PISTE_OAUTH_BASE}/api/oauth/token`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/x-www-form-urlencoded",
+    },
+    body: new URLSearchParams({
+      grant_type: "client_credentials",
+      client_id: process.env.PISTE_CLIENT_ID,
+      client_secret: process.env.PISTE_CLIENT_SECRET,
+      scope: "openid",
+    }),
+  });
+
+  if (!response.ok) {
+    throw new Error("Erreur récupération token");
+  }
+
+  return response.json();
+}
+
 export default async function handler(req, res) {
   try {
+    const tokenData = await getAccessToken();
+
     return res.status(200).json({
-      PISTE_CLIENT_ID: process.env.PISTE_CLIENT_ID || null,
-      PISTE_CLIENT_SECRET: process.env.PISTE_CLIENT_SECRET ? "OK" : null,
-      PISTE_OAUTH_BASE: process.env.PISTE_OAUTH_BASE || null,
+      access_token: tokenData.access_token,
+      expires_in: tokenData.expires_in,
     });
+
   } catch (error) {
-    return res.status(500).json({ error: error.message });
+    return res.status(500).json({
+      error: error.message,
+    });
   }
 }
