@@ -5,9 +5,9 @@ export const config = {
 export default async function handler(req, res) {
   try {
     return res.status(200).json({
-      ID_CLIENT_PISTE: process.env.ID_CLIENT_PISTE || null,
-      SECRET_DU_CLIENT_DE_LA_PISTE: process.env.SECRET_DU_CLIENT_DE_LA_PISTE ? "OK" : null,
-      BASE_OAUTH_PISTE: process.env.BASE_OAUTH_PISTE || null
+      PISTE_CLIENT_ID: process.env.PISTE_CLIENT_ID || null,
+      PISTE_CLIENT_SECRET: process.env.PISTE_CLIENT_SECRET ? "OK" : null,
+      PISTE_OAUTH_BASE: process.env.PISTE_OAUTH_BASE || null
     });
   } catch (error) {
     return res.status(500).json({
