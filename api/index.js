@@ -16,11 +16,13 @@ async function getAccessToken() {
     }),
   });
 
+  const data = await response.json();
+
   if (!response.ok) {
-    throw new Error("Erreur récupération token");
+    throw new Error(JSON.stringify(data));
   }
 
-  return response.json();
+  return data;
 }
 
 export default async function handler(req, res) {
