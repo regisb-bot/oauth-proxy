@@ -1,18 +1,22 @@
 export default async function handler(req, res) {
   try {
-    const clientId = process.env.PISTE_CLIENT_ID;
-    const clientSecret = process.env.PISTE_CLIENT_SECRET;
+    const clientId = process.env.ID_CLIENT_PISTE;
+    const clientSecret = process.env.SECRET_DU_CLIENT_DE_LA_PISTE;
+    const tokenUrl = process.env.BASE_OAUTH_PISTE;
 
-    if (!clientId || !clientSecret) {
+    if (!clientId || !clientSecret || !tokenUrl) {
       return res.status(500).json({
         ok: false,
-        error: "PISTE_CLIENT_ID / PISTE_CLIENT_SECRET manquants dans Vercel"
+        error: "Variables d’environnement manquantes (ID_CLIENT_PISTE / SECRET_DU_CLIENT_DE_LA_PISTE / BASE_OAUTH_PISTE)"
       });
     }
 
-    // 1) Token OAuth (client_credentials)
+    // =========================
+    // 1️⃣ Récupération du token OAuth PISTE
+    // =========================
     const basic = Buffer.from(`${clientId}:${clientSecret}`).toString("base64");
-    const tokenResp = await fetch("https://oauth.piste.gouv.fr/api/oauth/token", {
+
+    const tokenResponse = await fetch(tokenUrl, {
       method: "POST",
       headers: {
         "Authorization": `Basic ${basic}`,
@@ -21,22 +25,34 @@ export default async function handler(req, res) {
       body: "grant_type=client_credentials"
     });
 
-    const tokenText = await tokenResp.text();
-    const tokenData = JSON.parse(tokenText);
+    const tokenText = await tokenResponse.text();
+    let tokenData;
 
-    if (!tokenResp.ok || !tokenData.access_token) {
-      return res.status(tokenResp.status).json({
+    try {
+      tokenData = JSON.parse(tokenText);
+    } catch {
+      tokenData = { raw: tokenText };
+    }
+
+    if (!tokenResponse.ok || !tokenData.access_token) {
+      return res.status(tokenResponse.status).json({
         ok: false,
-        where: "token",
+        step: "token",
+        status: tokenResponse.status,
         tokenData
       });
     }
 
-    // 2) Appel Legifrance
-    const url = "https://api.piste.gouv.fr/dila/legifrance/lf-engine-app/consult/getTexte";
-    const payload = { textId: "LEGITEXT000006070719" };
+    // =========================
+    // 2️⃣ Appel API Légifrance
+    // =========================
+    const legifranceUrl = "https://api.piste.gouv.fr/dila/legifrance/lf-engine-app/consult/getTexte";
 
-    const apiResp = await fetch(url, {
+    const payload = {
+      textId: "LEGITEXT000006070719"
+    };
+
+    const apiResponse = await fetch(legifranceUrl, {
       method: "POST",
       headers: {
         "Authorization": `Bearer ${tokenData.access_token}`,
@@ -46,17 +62,25 @@ export default async function handler(req, res) {
       body: JSON.stringify(payload)
     });
 
-    const apiText = await apiResp.text();
+    const apiText = await apiResponse.text();
     let apiData;
-    try { apiData = JSON.parse(apiText); } catch { apiData = { raw: apiText }; }
 
-    return res.status(apiResp.status).json({
-      ok: apiResp.ok,
-      status: apiResp.status,
+    try {
+      apiData = JSON.parse(apiText);
+    } catch {
+      apiData = { raw: apiText };
+    }
+
+    return res.status(apiResponse.status).json({
+      ok: apiResponse.ok,
+      status: apiResponse.status,
       data: apiData
     });
 
-  } catch (e) {
-    return res.status(500).json({ ok: false, error: e?.message || String(e) });
+  } catch (error) {
+    return res.status(500).json({
+      ok: false,
+      error: error.message || String(error)
+    });
   }
 }
